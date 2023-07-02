@@ -5,7 +5,7 @@
 from pathlib import Path
 from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage
 
-from logic import Action
+from logic import action
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"E:\Documents\hieunt8\DataMapping\assets")
@@ -95,7 +95,7 @@ def main():
         image=button_image_1,
         borderwidth=0,
         highlightthickness=0,
-        command=lambda: Action(entry_1, entry_2),
+        command=lambda: action(entry_1, entry_2),
         relief="flat"
     )
     button_1.place(

@@ -20,18 +20,8 @@ def json_to_objects(file_import):
 
     for key, value in data.items():
         if isinstance(value, dict):
-            sub_class_name = key.capitalize()
-            sub_obj_class = type(sub_class_name, (JsonObject,), {})
-            setattr(obj, key, sub_obj_class(**value))
+            setattr(obj, key, JsonObject(**value))
         elif isinstance(value, list):
-            sub_objs = []
-            for x in value:
-                if isinstance(x, dict):
-                    sub_class_name = key.capitalize()
-                    sub_obj_class = type(sub_class_name, (JsonObject,), {})
-                    sub_objs.append(sub_obj_class(**x))
-                else:
-                    sub_objs.append(x)
-            setattr(obj, key, sub_objs)
+            setattr(obj, key, [JsonObject(**x) if isinstance(x, dict) else x for x in value])
 
     return obj

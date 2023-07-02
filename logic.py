@@ -8,12 +8,33 @@ maps = set()
 
 class JsonObject:
     def __init__(self, **kwargs):
+        self._seen_objects = set()
         for key, value in kwargs.items():
-            if isinstance(value, dict):
-                value = JsonObject(**value)
+            setattr(self, key, self._create_object(value))
+
+    def _create_object(self, data):
+        if id(data) in self._seen_objects:
+            return data
+        self._seen_objects.add(id(data))
+        if isinstance(data, dict):
+            return JsonObject(**data)
+        elif isinstance(data, list):
+            return [self._create_object(x) for x in data]
+        else:
+            return data
+
+    def to_dict(self):
+        result = {}
+        for key, value in self.__dict__.items():
+            if key.startswith("_"):
+                continue
+            if isinstance(value, JsonObject):
+                result[key] = value.to_dict()
             elif isinstance(value, list):
-                value = [JsonObject(**x) if isinstance(x, dict) else x for x in value]
-            setattr(self, key, value)
+                result[key] = [x.to_dict() if isinstance(x, JsonObject) else x for x in value]
+            else:
+                result[key] = value
+        return result
 
 
 def json_to_objects(file_import):
@@ -21,86 +42,54 @@ def json_to_objects(file_import):
     with open(file_import[1].strip()) as f:
         data = json.load(f)
 
-    obj_class = type(class_name, (JsonObject,), {})
-    obj = obj_class(**data)
-
+    obj = JsonObject(**data)
     globals()[class_name] = obj
 
     for key, value in data.items():
         if isinstance(value, dict):
-            sub_class_name = key.capitalize()
-            sub_obj_class = type(sub_class_name, (JsonObject,), {})
-            setattr(obj, key, sub_obj_class(**value))
+            setattr(obj, key, JsonObject(**value))
         elif isinstance(value, list):
-            sub_objs = []
-            for x in value:
-                if isinstance(x, dict):
-                    sub_class_name = key.capitalize()
-                    sub_obj_class = type(sub_class_name, (JsonObject,), {})
-                    sub_objs.append(sub_obj_class(**x))
-                else:
-                    sub_objs.append(x)
-            setattr(obj, key, sub_objs)
+            setattr(obj, key, [JsonObject(**x) if isinstance(x, dict) else x for x in value])
 
     return obj
 
 
-def execute_logic(input_str):
-    """
-    Verifies the input string and executes it using `eval` or `exec` if it is safe.
-    Raises a ValueError if the input string contains any unsafe code.
-    """
-    # Whitelist of safe functions and modules
-    safe_list = ['math', 'sin', 'cos', 'tan']
-
-    # Parse the input string as an abstract syntax tree (AST)
-    parsed = ast.parse(input_str, mode='exec')
-
-    # Check if the AST contains any unsafe nodes
-    for node in ast.walk(parsed):
-        if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name) or node.func.id not in safe_list:
-                raise ValueError(f"Unsafe function call: {ast.dump(node)}")
-        elif isinstance(node, ast.Attribute):
-            if not isinstance(node.value, ast.Name) or node.value.id not in safe_list:
-                raise ValueError(f"Unsafe attribute access: {ast.dump(node)}")
-
-    try:
-        # If the input string is safe, execute it using `eval` or `exec`
-        # If the input string is safe, execute it using `eval` or `exec`
-        exec(input_str, globals())
-    except SyntaxError:
-        raise SyntaxError('Invalid syntax in input: {}'.format(input_str))
-    except NameError:
-        raise NameError('Undefined variable in input: {}'.format(input_str))
-    return None
-
-
-def printFunc(var_name):
-    if var_name in globals():
-        return globals()[var_name]
+def objects_to_json(obj):
+    if isinstance(obj, JsonObject):
+        return json.dumps(obj.to_dict(), indent=2)
+    elif isinstance(obj, list):
+        return [json.dumps(x.to_dict(), indent=2) if isinstance(x, JsonObject) else x for x in obj]
     else:
-        return "Not Found"
+        return obj
 
 
-def Action(IN, OUT):
-    OUT.delete('1.0', END)
-    INPUT = IN.get("1.0", "end")
+def execute_logic(input_str):
+    exec(input_str, globals())
+
+
+def get_value(var_name):
+    data = eval(f'objects_to_json({var_name})')
+    return data
+
+
+def action(in_data, out_data):
+    out_data.delete('1.0', END)
+    INPUT = in_data.get("1.0", "end")
     print(repr(INPUT))
-    OUT.insert(END, "Hê Lô tình yêu")
+    out_data.insert(END, "Hê Lô tình yêu")
     inputs = [string for string in INPUT.split("\n") if string.strip()]
 
     for txt in inputs:
         try:
-            if '.' in txt and "print" not in txt:
+            if '.json' in txt:
                 json_to_objects(txt.split("="))
-                OUT.insert(END, "\n" + "Import File: " + txt)
+                out_data.insert(END, "\n" + "Import File: " + txt)
             elif "=" in txt and "map:" not in txt:
                 execute_logic(txt)
-                OUT.insert(END, "\n" + "Executed: " + txt)
+                out_data.insert(END, "\n" + "Executed: " + txt)
             elif "map:" in txt:
                 maps.add(txt.split("map:")[1].strip())
-                OUT.insert(END, "\n" + "Add " + txt)
+                out_data.insert(END, "\n" + "Add " + txt)
             elif "print" in txt:
                 temp = ''
                 try:
@@ -111,9 +100,9 @@ def Action(IN, OUT):
                     maps.remove(temp)
                     raise Exception(str(e) + "\nRemoved mapping: {}".format(temp))
                 nameOfVar = txt.split("(")[1].split(")")[0]
-                OUT.insert(END, "\n" + "Value of " + nameOfVar + ": " + str(printFunc(nameOfVar)))
+                out_data.insert(END, "\n" + "Value of " + nameOfVar + ": \n" + str(get_value(nameOfVar)))
             else:
-                OUT.insert(END, "\n" + "Not valid Input: " + txt)
+                out_data.insert(END, "\n" + "Not valid Input: " + txt)
         except Exception as e:
-            OUT.insert(END, "\nError: " + str(e))
+            out_data.insert(END, "\nError: " + str(e))
             raise e
