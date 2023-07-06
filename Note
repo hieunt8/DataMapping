@@ -1,0 +1,13 @@
+
+
+    - Support mapping file
+    - show + clear selected mapping
+    - Refactor code
+    - Update UI
+    - support test construct
+    - support Database
+    - Verify input - eval - exec
+    - Visualize table
+
+
+    map: a = 5 if b < 5 else 10

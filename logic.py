@@ -2,8 +2,9 @@ from tkinter import END
 import json
 import ast
 import sys
+import re
 
-maps = set()
+maps = dict()
 
 
 class JsonObject:
@@ -72,6 +73,18 @@ def get_value(var_name):
     return data
 
 
+def check_input_file_path(input_str):
+    pattern = r'^(\w+)\s*=\s*("[^"]+"|\w+[\\/]?.*?\.json)$'
+
+    match = re.match(pattern, input_str)
+    if match:
+        string1 = match.group(1)
+        string2 = match.group(2)
+        return [string1, string2]
+    else:
+        raise ValueError("Input string doesn't have the correct structure.")
+
+
 def action(in_data, out_data):
     out_data.delete('1.0', END)
     INPUT = in_data.get("1.0", "end")
@@ -82,22 +95,23 @@ def action(in_data, out_data):
     for txt in inputs:
         try:
             if '.json' in txt:
-                json_to_objects(txt.split("="))
+                json_to_objects(check_input_file_path(txt))
                 out_data.insert(END, "\n" + "Import File: " + txt)
             elif "=" in txt and "map:" not in txt:
                 execute_logic(txt)
                 out_data.insert(END, "\n" + "Executed: " + txt)
             elif "map:" in txt:
-                maps.add(txt.split("map:")[1].strip())
+                maps[txt.split("map:")[1].strip().split("=")[0].strip()] = txt.split("map:")[1].strip()
                 out_data.insert(END, "\n" + "Add " + txt)
             elif "print" in txt:
                 temp = ''
                 try:
-                    for map in maps:
-                        temp = map
-                        execute_logic(map)
+                    print(maps.values())
+                    for m in maps.values():
+                        temp = m
+                        execute_logic(m)
                 except Exception as e:
-                    maps.remove(temp)
+                    maps.pop(temp)
                     raise Exception(str(e) + "\nRemoved mapping: {}".format(temp))
                 nameOfVar = txt.split("(")[1].split(")")[0]
                 out_data.insert(END, "\n" + "Value of " + nameOfVar + ": \n" + str(get_value(nameOfVar)))
