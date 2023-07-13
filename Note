@@ -1,13 +1,15 @@
 
 
     - Support mapping file
-    - show + clear selected mapping
+    - clear selected mapping
     - Refactor code
     - Update UI
-    - support test construct
+    - support test construct, check type
+        + Support read swagger file
+        + convert to object with random data
     - support Database
     - Verify input - eval - exec
     - Visualize table
-
+    -
 
     map: a = 5 if b < 5 else 10

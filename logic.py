@@ -60,6 +60,8 @@ def objects_to_json(obj):
         return json.dumps(obj.to_dict(), indent=2)
     elif isinstance(obj, list):
         return [json.dumps(x.to_dict(), indent=2) if isinstance(x, JsonObject) else x for x in obj]
+    elif isinstance(obj, dict):
+        return json.dumps(obj, indent=2)
     else:
         return obj
 
@@ -106,12 +108,11 @@ def action(in_data, out_data):
             elif "print" in txt:
                 temp = ''
                 try:
-                    print(maps.values())
                     for m in maps.values():
                         temp = m
                         execute_logic(m)
                 except Exception as e:
-                    maps.pop(temp)
+                    maps.pop(temp.split("=")[0].strip())
                     raise Exception(str(e) + "\nRemoved mapping: {}".format(temp))
                 nameOfVar = txt.split("(")[1].split(")")[0]
                 out_data.insert(END, "\n" + "Value of " + nameOfVar + ": \n" + str(get_value(nameOfVar)))
